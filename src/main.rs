@@ -79,14 +79,10 @@ fn main() -> Result<()> {
     let hosts = get_hosts(&config);
     let host = Select::new("Select a host", hosts).prompt()?;
 
-    println!("SSH session started");
-
     Command::new("sh")
         .arg("-c")
         .arg(format!("{term} -e bash -c 'ssh {}'", host.name))
         .output()?;
-
-    println!("SSH session closed");
 
     Ok(())
 }
