@@ -1,4 +1,4 @@
-Dead simple ssh_config TUI. Not made for advanced usage!
+Dead simple ssh_config TUI written in ~100 lines.
 
 ### Usage
 
