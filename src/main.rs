@@ -90,10 +90,16 @@ fn main() -> Result<()> {
         format!("ssh {}", host.name)
     };
 
-    Command::new("sh")
+    let output = Command::new("bash")
         .arg("-c")
         .arg(format!("{term} -e bash -c '{ssh_cmd}'"))
         .output()?;
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    if !stderr.is_empty() {
+        print!("{stderr}");
+    }
 
     Ok(())
 }
