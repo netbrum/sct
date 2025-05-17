@@ -39,13 +39,17 @@ fn get_hosts(config: &SshConfig) -> Vec<HostEntry> {
     let hosts = config
         .get_hosts()
         .iter()
-        .filter(|host| {
-            host.pattern.first().unwrap().pattern != "*" && host.params.host_name.is_some()
-        })
-        .map(|host| HostEntry {
-            name: host.pattern.first().unwrap().pattern.clone(),
-            host: host.params.host_name.clone().unwrap(),
-            user: host.params.user.clone(),
+        .filter_map(|host| {
+            host.pattern
+                .first()
+                .filter(|hc| hc.pattern != "*")
+                .and_then(|_| {
+                    host.params.host_name.clone().map(|host_name| HostEntry {
+                        name: host.pattern.first().unwrap().pattern.clone(),
+                        host: host_name,
+                        user: host.params.user.clone(),
+                    })
+                })
         })
         .collect::<Vec<_>>();
 
