@@ -1,6 +1,8 @@
-use clap::{Parser, ValueEnum, builder::PossibleValue};
+mod error;
+use clap::Parser;
 use color_eyre::eyre::Result;
 use color_eyre::owo_colors::OwoColorize;
+use error::Error;
 use inquire::Select;
 use ssh2_config::{ParseRule, SshConfig, SshParserResult};
 use std::env;
@@ -10,36 +12,6 @@ use std::io::BufReader;
 use std::path::PathBuf;
 use std::process::Command;
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-enum Term {
-    Alacritty,
-    Konsole,
-}
-
-impl Display for Term {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let term = match self {
-            Self::Alacritty => "alacritty",
-            Self::Konsole => "konsole",
-        };
-
-        write!(f, "{term}")
-    }
-}
-
-impl ValueEnum for Term {
-    fn value_variants<'a>() -> &'a [Self] {
-        &[Term::Alacritty, Term::Konsole]
-    }
-
-    fn to_possible_value(&self) -> Option<PossibleValue> {
-        Some(match self {
-            Term::Alacritty => PossibleValue::new("alacritty"),
-            Term::Konsole => PossibleValue::new("konsole"),
-        })
-    }
-}
-
 #[derive(Parser)]
 #[command(version)]
 pub struct Args {
@@ -47,8 +19,8 @@ pub struct Args {
     #[arg(short, long)]
     config: Option<String>,
 
-    #[arg(short, long, default_value_t = Term::Alacritty)]
-    term: Term,
+    #[arg(short, long)]
+    term: Option<String>,
 }
 
 struct HostEntry {
@@ -99,6 +71,13 @@ fn main() -> Result<()> {
     color_eyre::install()?;
     let args = Args::parse();
 
+    let env_term = env::var("TERM")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .ok_or(Error::TermNotSet)?;
+
+    let term = args.term.as_ref().unwrap_or(&env_term);
+
     let config_path = get_config_file(&args)?;
     let config = parse_config(config_path)?;
 
@@ -113,7 +92,7 @@ fn main() -> Result<()> {
 
     Command::new("sh")
         .arg("-c")
-        .arg(format!("{} -e bash -c '{ssh_cmd}'", args.term))
+        .arg(format!("{term} -e bash -c '{ssh_cmd}'"))
         .output()?;
 
     Ok(())
