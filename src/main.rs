@@ -1,9 +1,10 @@
+mod error;
 use clap::Parser;
 use color_eyre::eyre::Result;
+use error::Error;
 use inquire::Select;
 use ssh2_config::{ParseRule, SshConfig, SshParserResult};
 use std::env;
-use std::fmt::Display;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::PathBuf;
@@ -17,37 +18,12 @@ pub struct Args {
     config: Option<String>,
 }
 
-struct Host {
-    name: String,
-    host: String,
-}
-
-impl Display for Host {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} ({})", self.name, self.host)
-    }
-}
-
-impl Host {
-    fn new(name: &str, host: &str) -> Self {
-        Self {
-            name: name.to_owned(),
-            host: host.to_owned(),
-        }
-    }
-}
-
-fn get_hosts(config: &SshConfig) -> Vec<Host> {
+fn get_hosts(config: &SshConfig) -> Vec<String> {
     let hosts = config
         .get_hosts()
         .iter()
         .filter(|host| host.pattern.first().unwrap().pattern != "*")
-        .map(|host| {
-            Host::new(
-                &host.pattern.first().unwrap().pattern,
-                &host.params.host_name.clone().unwrap(),
-            )
-        })
+        .map(|host| host.pattern.first().unwrap().pattern.clone())
         .collect::<Vec<_>>();
 
     hosts
@@ -76,13 +52,29 @@ fn main() -> Result<()> {
     let config = parse_config(config_path)?;
     let term = env::var("TERM")?;
 
+    if term.is_empty() {
+        return Err(Error::TermNotSet.into());
+    }
+
     let hosts = get_hosts(&config);
     let host = Select::new("Select a host", hosts).prompt()?;
 
-    Command::new("sh")
-        .arg("-c")
-        .arg(format!("{term} -e bash -c 'ssh {}'", host.name))
-        .output()?;
+    let host_config = config.query(host);
 
-    Ok(())
+    if let Some(host_name) = host_config.host_name {
+        let ssh_cmd = if let Some(user) = host_config.user {
+            format!("ssh {}@{}", user, host_name)
+        } else {
+            format!("ssh {}", host_name)
+        };
+
+        Command::new("sh")
+            .arg("-c")
+            .arg(format!("{term} -e bash -c '{ssh_cmd}'"))
+            .output()?;
+
+        Ok(())
+    } else {
+        Err(Error::MissingHostName.into())
+    }
 }
