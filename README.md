@@ -10,7 +10,7 @@ cargo install --git https://github.com/netbrum/sct
 
 By default, `sct` scans for the config file in `$HOME/.ssh/config`, you can however use a different config file, by setting the `--config` option.
 
-Supports any terminal that uses the `-e` option to execute a command (It choses the terminal set in `$TERM` by default).
+Supports any terminal that uses the `-e` option to execute a command (It choses the terminal set in `$TERM`).
 
 The following command is what is being executed:
 

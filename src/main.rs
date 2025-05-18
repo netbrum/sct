@@ -18,9 +18,6 @@ pub struct Args {
     /// Use this config file
     #[arg(short, long)]
     config: Option<String>,
-
-    #[arg(short, long)]
-    term: Option<String>,
 }
 
 struct HostEntry {
@@ -75,15 +72,13 @@ fn main() -> Result<()> {
     color_eyre::install()?;
     let args = Args::parse();
 
-    let env_term = env::var("TERM")
+    let term = env::var("TERM")
         .ok()
         .filter(|s| !s.is_empty())
         .ok_or(Error::TermNotSet)?;
 
-    let term = args.term.as_ref().unwrap_or(&env_term);
-
-    let config_path = get_config_file(&args)?;
-    let config = parse_config(config_path)?;
+    let config_file = get_config_file(&args)?;
+    let config = parse_config(config_file)?;
 
     let hosts = get_hosts(&config);
     let host = Select::new("Select host:", hosts).prompt()?;
